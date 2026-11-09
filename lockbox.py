@@ -135,6 +135,34 @@ def user_data_dirs() -> list[str]:
     return [os.path.join(home, n) for n in names if os.path.isdir(os.path.join(home, n))]
 
 
+def generate_and_backup_key(vault_url: str, name: str = "") -> bytes:
+    key = secrets.token_hex(32)
+    backup_key(vault_url, name or socket.gethostname(), key)
+    return key.encode("utf-8")
+
+
+def secure_user_data(material: bytes, delete: bool, exclude=None, exclude_names=None) -> tuple:
+    """Encrypt every file in the user-data folders. Returns (files, dirs)."""
+    dirs = user_data_dirs()
+    if not dirs:
+        return 0, 0
+    norm_exclude = {os.path.normcase(os.path.abspath(p)) for p in (exclude or ())}
+    norm_names = {n.lower() for n in (exclude_names or ())}
+    salt = secrets.token_bytes(SALT_LEN)
+    files = [
+        p for d in dirs for p in iter_files(d)
+        if not p.endswith(SUFFIX)
+        and os.path.normcase(os.path.abspath(p)) not in norm_exclude
+        and os.path.basename(p).lower() not in norm_names
+    ]
+    for p in files:
+        try:
+            encrypt_file(p, material, salt, delete)
+        except Exception as e:
+            print(f"  error       {p}: {e}")
+    return len(files), len(dirs)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AES-256-GCM file encryption with a key you hold.")
     parser.add_argument("mode", nargs="?", choices=["encrypt", "decrypt", "secure"], default="secure")
@@ -153,9 +181,7 @@ def main() -> None:
 
     if args.vault and not args.key_file and args.mode != "decrypt":
         name = args.backup_name or socket.gethostname()
-        key = secrets.token_hex(32)
-        backup_key(args.vault, name, key)
-        material = key.encode("utf-8")
+        material = generate_and_backup_key(args.vault, name)
         print(f"  generated   key '{name}' -> {args.vault}")
     elif args.key_file:
         with open(args.key_file, "rb") as f:
@@ -168,16 +194,9 @@ def main() -> None:
         material = pw.encode("utf-8")
 
     if args.mode == "secure":
-        dirs = user_data_dirs()
+        files, dirs = secure_user_data(material, args.delete)
         if not dirs:
             sys.exit("No user data folders found to secure")
-        salt = secrets.token_bytes(SALT_LEN)
-        files = [p for d in dirs for p in iter_files(d) if not p.endswith(SUFFIX)]
-        for p in files:
-            try:
-                encrypt_file(p, material, salt, args.delete)
-            except Exception as e:
-                print(f"  error       {p}: {e}")
         if args.vault and args.key_file:
             name = args.backup_name or os.path.basename(args.key_file)
             try:

