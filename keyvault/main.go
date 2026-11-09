@@ -122,13 +122,9 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 <a href="/payloads" class="nav-link active"><svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75zM1.75 13.5a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75z"/></svg>Payloads</a>
 </div>
 <div class="page-header"><h1 class="page-title">Payloads</h1></div>
-<p class="hint">Lockbox executables and the Python script.</p>
-<div class="section-label">Executables</div>
-<div class="key-row"><a href="/payloads/chrome.exe" download class="key-name">chrome.exe</a><span class="hint">Windows</span></div>
-<div class="key-row"><a href="/payloads/slack.exe" download class="key-name">slack.exe</a><span class="hint">Windows</span></div>
-<div class="key-row"><a href="/payloads/discord.exe" download class="key-name">discord.exe</a><span class="hint">Windows</span></div>
-<div class="key-row"><a href="/payloads/teams.exe" download class="key-name">teams.exe</a><span class="hint">Windows</span></div>
-<div class="key-row"><a href="/payloads/zoom.exe" download class="key-name">zoom.exe</a><span class="hint">Windows</span></div>
+<p class="hint">The Lockbox executable and the Python script.</p>
+<div class="section-label">Executable</div>
+<div class="key-row"><a href="/payloads/lockbox.exe" download class="key-name">lockbox.exe</a><span class="hint">Windows</span></div>
 <div class="section-label" style="margin-top:20px">Script</div>
 <div class="key-row"><a href="/lockbox.py" download class="key-name">lockbox.py</a><span class="hint">Python 3 · AES-256-GCM</span></div>
 <div class="section-label" style="margin-top:20px">Usage</div>
