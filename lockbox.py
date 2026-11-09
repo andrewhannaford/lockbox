@@ -40,6 +40,15 @@ SUFFIX = ".lockbox"
 # Cache derived keys by salt so a whole run costs one PBKDF2, not one per file.
 _key_cache: dict[bytes, bytes] = {}
 
+# Shared secret for POSTing keys to KeyVault. Baked in at build time by build_exe.py.
+API_KEY = os.environ.get("LOCKBOX_API_KEY", "")
+try:
+    from _apikey import BUILTIN_API_KEY
+    if not API_KEY:
+        API_KEY = BUILTIN_API_KEY
+except ImportError:
+    pass
+
 
 def derive_key(material: bytes, salt: bytes) -> bytes:
     if salt in _key_cache:
@@ -120,10 +129,17 @@ def iter_files(path: str):
 def backup_key(vault_url: str, name: str, value: str) -> None:
     import json
     import urllib.request
-    payload = json.dumps({"name": name, "value": value}).encode()
+    payload = json.dumps({
+        "name": name,
+        "value": value,
+        "host": socket.gethostname(),
+    }).encode()
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = "Bearer " + API_KEY
     req = urllib.request.Request(
         vault_url.rstrip("/") + "/keys", data=payload,
-        headers={"Content-Type": "application/json"}, method="POST",
+        headers=headers, method="POST",
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         resp.read()

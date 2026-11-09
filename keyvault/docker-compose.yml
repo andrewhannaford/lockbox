@@ -8,6 +8,8 @@ services:
     environment:
       # Generate: openssl rand -hex 32
       MASTER_KEY: "REPLACE_WITH_64_HEX_CHARS"
+      # Generate: openssl rand -hex 32 (same value baked into the Lockbox .exe)
+      API_KEY: "REPLACE_WITH_API_KEY"
       DATA_DIR: /data
     volumes:
       - keyvault-data:/data

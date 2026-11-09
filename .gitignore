@@ -2,6 +2,9 @@
 *.exe
 *.pyc
 __pycache__/
+_apikey.py
+build/
+dist/
 keyvault/payloads/
 keyvault/testdata/
 keyvault/*.build/

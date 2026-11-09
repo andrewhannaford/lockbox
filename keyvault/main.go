@@ -8,6 +8,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/subtle"
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
@@ -25,9 +26,10 @@ import (
 var lockboxPy []byte
 
 var (
-	masterKey []byte
-	dataDir   string
+	masterKey   []byte
+	dataDir     string
 	payloadsDir string
+	apiKey      string
 
 	nameRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
@@ -77,15 +79,17 @@ async function load(){
   box.innerHTML='';
   keys.forEach(function(k){
     var row=document.createElement('div'); row.className='key-row';
-    var n=document.createElement('span'); n.className='key-name'; n.textContent=k; n.title='Click to reveal'; n.onclick=function(){show(k);};
-    var b=document.createElement('button'); b.className='btn btn-del'; b.textContent='Delete'; b.onclick=function(){del(k);};
-    row.appendChild(n); row.appendChild(b); box.appendChild(row);
+    var n=document.createElement('span'); n.className='key-name'; n.textContent=k.name; n.title='Click to reveal'; n.onclick=function(){show(k.name);};
+    var hh=document.createElement('span'); hh.className='hint'; hh.textContent=k.host||'(unknown host)';
+    var b=document.createElement('button'); b.className='btn btn-del'; b.textContent='Delete'; b.onclick=function(){del(k.name);};
+    row.appendChild(n); row.appendChild(hh); row.appendChild(b); box.appendChild(row);
   });
 }
 async function show(name){
   var box=document.getElementById('list');
   var r=await fetch('/keys/'+encodeURIComponent(name),{headers:h()}); var d=await r.json();
-  var v=document.createElement('div'); v.className='value'; v.textContent=(d.value!==undefined?d.value:JSON.stringify(d));
+  var v=document.createElement('div'); v.className='value';
+  v.textContent=(d.host?'host: '+d.host+'\n':'')+(d.value!==undefined?d.value:JSON.stringify(d));
   box.appendChild(v);
 }
 async function del(name){
@@ -148,6 +152,10 @@ func main() {
 	if payloadsDir == "" {
 		payloadsDir = "/payloads"
 	}
+	apiKey = os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Printf("API_KEY not set; POST /keys will be rejected")
+	}
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		log.Fatal(err)
 	}
@@ -206,16 +214,21 @@ func handleLockboxPy(w http.ResponseWriter, _ *http.Request) {
 func handleKeys(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		names, err := listNames()
+		keys, err := listKeys()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, map[string]any{"keys": names})
+		writeJSON(w, map[string]any{"keys": keys})
 	case http.MethodPost:
+		if !validAPIKey(r) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 		var body struct {
 			Name  string `json:"name"`
 			Value string `json:"value"`
+			Host  string `json:"host"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -229,7 +242,12 @@ func handleKeys(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "value must not be empty", http.StatusBadRequest)
 			return
 		}
-		enc, err := encrypt([]byte(body.Value))
+		raw, err := json.Marshal(map[string]string{"value": body.Value, "host": body.Host})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		enc, err := encrypt(raw)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -266,7 +284,8 @@ func handleKey(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "decryption failed", http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, map[string]string{"name": name, "value": string(plain)})
+		host, value := splitPayload(plain)
+		writeJSON(w, map[string]string{"name": name, "host": host, "value": value})
 	case http.MethodDelete:
 		if err := os.Remove(keyPath(name)); err != nil && !os.IsNotExist(err) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -282,24 +301,59 @@ func keyPath(name string) string {
 	return filepath.Join(dataDir, name+".enc")
 }
 
-func listNames() ([]string, error) {
+type keyMeta struct {
+	Name string `json:"name"`
+	Host string `json:"host"`
+}
+
+func listKeys() ([]keyMeta, error) {
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return nil, err
 	}
-	names := []string{}
+	keys := []keyMeta{}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".enc") {
 			continue
 		}
-		names = append(names, strings.TrimSuffix(e.Name(), ".enc"))
+		meta := keyMeta{Name: strings.TrimSuffix(e.Name(), ".enc")}
+		if data, err := os.ReadFile(filepath.Join(dataDir, e.Name())); err == nil {
+			if plain, err := decrypt(data); err == nil {
+				meta.Host, _ = splitPayload(plain)
+			}
+		}
+		keys = append(keys, meta)
 	}
-	sort.Strings(names)
-	return names, nil
+	sort.Slice(keys, func(i, j int) bool { return keys[i].Name < keys[j].Name })
+	return keys, nil
 }
 
 func validName(name string) bool {
 	return nameRe.MatchString(name)
+}
+
+func validAPIKey(r *http.Request) bool {
+	if apiKey == "" {
+		return false
+	}
+	const prefix = "Bearer "
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(auth, prefix) {
+		return false
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(auth, prefix))
+	return subtle.ConstantTimeCompare([]byte(token), []byte(apiKey)) == 1
+}
+
+func splitPayload(plain []byte) (host, value string) {
+	var p struct {
+		Host  string `json:"host"`
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(plain, &p); err != nil || p.Value == "" {
+		return "", string(plain)
+	}
+	return p.Host, p.Value
 }
 
 func encrypt(plain []byte) ([]byte, error) {

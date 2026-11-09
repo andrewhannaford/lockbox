@@ -12,7 +12,7 @@ logging of secrets, and it does not reach out to any machine.
 ```bash
 # generate two secrets
 openssl rand -hex 32   # MASTER_KEY (encryption-at-rest key)
-openssl rand -hex 24   # API_KEY     (access token)
+openssl rand -hex 32   # API_KEY     (shared with the Lockbox .exe)
 
 # put them in docker-compose.yml, then:
 docker compose up -d --build
@@ -23,7 +23,8 @@ behind your Traefik with auth) so it's not directly exposed.
 
 ## Endpoints
 
-All requests (except `/health`) need the header:
+`POST /keys` requires this header (enforced by the service); `GET`/`DELETE` are
+protected by the reverse proxy (Pocket ID / OIDC):
 
 ```
 Authorization: Bearer <API_KEY>
@@ -32,10 +33,14 @@ Authorization: Bearer <API_KEY>
 | Method | Path | Body | Purpose |
 |---|---|---|---|
 | GET | `/health` | — | health check |
-| POST | `/keys` | `{"name":"lockbox-master","value":"..."}` | store a secret |
-| GET | `/keys` | — | list stored names |
-| GET | `/keys/<name>` | — | retrieve a secret |
+| POST | `/keys` | `{"name":"...","value":"...","host":"..."}` | store a secret (needs Bearer `API_KEY`) |
+| GET | `/keys` | — | list stored names and hosts |
+| GET | `/keys/<name>` | — | retrieve a secret and its host |
 | DELETE | `/keys/<name>` | — | delete a secret |
+
+Lockbox sends its hostname as `host`, so the Keys page labels which machine each
+key belongs to. The same `API_KEY` is baked into the executable at build time via
+`build_exe.py`.
 
 Names must match `[A-Za-z0-9._-]{1,128}`.
 
