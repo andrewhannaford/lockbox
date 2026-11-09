@@ -1,6 +1,7 @@
 # Lockbox — encryption tool + KeyVault key-backup service
 *.exe
 *.pyc
+*.spec
 __pycache__/
 _apikey.py
 build/
