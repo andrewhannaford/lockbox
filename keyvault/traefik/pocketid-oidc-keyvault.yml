@@ -1,0 +1,25 @@
+# Pocket ID OIDC for KeyVault (keyvault.lanarchy.net). Own client + own cookie.
+http:
+  middlewares:
+    pocketid-oidc-keyvault:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "REPLACE_ME"
+          LogLevel: INFO
+          TokenValidation: "IdToken"
+          UnauthorizedBehavior: "Challenge"
+          BypassAuthenticationRule: "Method(`POST`) && Path(`/keys`)"
+          LogoutUri: "/oidc/logout"
+          PostLogoutRedirectUri: "/"
+          Provider:
+            Url: "https://auth.lanarchy.net"
+            ClientId: "8456d26a-190c-4897-91da-3bf716ac4e9b"
+            ClientSecret: "REPLACE_ME"
+            UsePkce: true
+          Scopes: ["openid","profile","email","groups"]
+          SessionCookie:
+            Name: "lanarchy_keyvault_session"
+            MaxAge: 2592000
+            Secure: true
+            HttpOnly: true
+            SameSite: "lax"

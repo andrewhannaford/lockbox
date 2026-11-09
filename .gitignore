@@ -1,0 +1,9 @@
+# Lockbox — encryption tool + KeyVault key-backup service
+*.exe
+*.pyc
+__pycache__/
+keyvault/payloads/
+keyvault/testdata/
+keyvault/*.build/
+keyvault/*.dist/
+keyvault/*.onefile-build/

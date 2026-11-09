@@ -1,0 +1,35 @@
+# KeyVault - keyvault.lanarchy.net -> http://keyvault:8080 (traefik-net)
+http:
+  routers:
+    keyvault:
+      rule: "Host(`keyvault.lanarchy.net`)"
+      entryPoints:
+        - websecure
+      service: keyvault-svc
+      middlewares:
+        - error-pages@file
+        - pocketid-oidc-keyvault@file
+      tls:
+        options: internalTLS@file
+
+    keyvault-public:
+      rule: "Host(`keyvault.lanarchy.net`)"
+      entryPoints:
+        - public
+      service: keyvault-svc
+      middlewares:
+        - error-pages@file
+        - geoblock@file
+        - pocketid-oidc-keyvault@file
+      tls:
+        certResolver: le
+        domains:
+          - main: "keyvault.lanarchy.net"
+        options: internalTLS@file
+
+  services:
+    keyvault-svc:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://keyvault:8080"

@@ -1,0 +1,16 @@
+services:
+  keyvault:
+    build: .
+    container_name: keyvault
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Generate: openssl rand -hex 32
+      MASTER_KEY: "REPLACE_WITH_64_HEX_CHARS"
+      DATA_DIR: /data
+    volumes:
+      - keyvault-data:/data
+
+volumes:
+  keyvault-data:
