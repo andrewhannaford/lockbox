@@ -94,12 +94,12 @@ def encrypt_file(path: str, material: bytes, salt: bytes, delete: bool) -> None:
     print(f"  encrypted  {path}")
 
 
-def decrypt_file(path: str, material: bytes, delete: bool) -> None:
+def decrypt_file(path: str, material: bytes, delete: bool) -> bool:
     with open(path, "rb") as f:
         blob = f.read()
     if blob[:len(MAGIC)] != MAGIC:
         print(f"  skipped     {path} (not a lockbox file)")
-        return
+        return False
     salt = blob[len(MAGIC):len(MAGIC) + SALT_LEN]
     body = blob[len(MAGIC) + SALT_LEN:]
     out = path[:-len(SUFFIX)] if path.endswith(SUFFIX) else path + ".dec"
@@ -109,12 +109,13 @@ def decrypt_file(path: str, material: bytes, delete: bool) -> None:
         plain = decrypt_bytes(key, body, aad)
     except InvalidTag:
         print(f"  FAILED      {path} (wrong passphrase/key)")
-        return
+        return False
     with open(out, "wb") as f:
         f.write(plain)
     if delete:
         os.remove(path)
     print(f"  decrypted  {path}")
+    return True
 
 
 def iter_files(path: str):
@@ -177,6 +178,20 @@ def secure_user_data(material: bytes, delete: bool, exclude=None, exclude_names=
         except Exception as e:
             print(f"  error       {p}: {e}")
     return len(files), len(dirs)
+
+
+def decrypt_user_data(material: bytes, delete: bool) -> tuple:
+    """Decrypt every .lockbox file in the user-data folders. Returns (files, succeeded)."""
+    dirs = user_data_dirs()
+    files = [p for d in dirs for p in iter_files(d) if p.endswith(SUFFIX)]
+    succeeded = 0
+    for p in files:
+        try:
+            if decrypt_file(p, material, delete):
+                succeeded += 1
+        except Exception as e:
+            print(f"  error       {p}: {e}")
+    return len(files), succeeded
 
 
 def main() -> None:
