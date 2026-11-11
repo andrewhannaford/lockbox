@@ -129,9 +129,10 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 </div>
 <div class="page-header"><h1 class="page-title">Payloads</h1></div>
 <p class="hint">The Lockbox executables and the Python script.</p>
-<div class="section-label">Executables</div>
-<div class="key-row"><a href="/payloads/lockbox.exe" download class="key-name">lockbox.exe</a><span class="hint">Windows</span></div>
-<div class="key-row"><a href="/payloads/lockbox" download class="key-name">lockbox</a><span class="hint">Linux</span></div>
+<div class="section-label">Windows</div>
+<div class="key-row"><a href="/payloads/lockbox.exe" download class="key-name">lockbox.exe</a><span class="hint">Windows executable</span></div>
+<div class="section-label" style="margin-top:20px">Linux</div>
+<div class="key-row"><a href="/payloads/lockbox" download class="key-name">lockbox</a><span class="hint">Linux executable · chmod +x after download</span></div>
 <div class="section-label" style="margin-top:20px">Script</div>
 <div class="key-row"><a href="/lockbox.py" download class="key-name">lockbox.py</a><span class="hint">Python 3 · AES-256-GCM</span></div>
 <div class="section-label" style="margin-top:20px">Usage</div>
