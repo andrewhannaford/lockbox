@@ -71,6 +71,8 @@ th{color:var(--text-dim);font-weight:600;text-transform:uppercase;font-size:11px
 
 const brandIcon = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a3 3 0 0 0-3 3v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2V4a3 3 0 0 0-3-3zm1 5H7V4a1 1 0 1 1 2 0v2z"/></svg>`
 
+const faviconLink = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Cpath d='M16 7a4 4 0 0 0-4 4v2h-1.5A1.5 1.5 0 0 0 9 14.5V23a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 23 23v-8.5A1.5 1.5 0 0 0 21.5 13H20v-2a4 4 0 0 0-4-4zm1.5 6.5h-3V11a1.5 1.5 0 1 1 3 0v2.5z' fill='white'/%3E%3C/svg%3E">`
+
 const lockIcon = `<svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a3 3 0 0 0-3 3v1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2V4a3 3 0 0 0-3-3zm1 5H7V4a1 1 0 1 1 2 0v2z"/></svg>`
 
 const downloadIcon = `<svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M7.47 10.78a.75.75 0 0 0 1.06 0l3.75-3.75a.75.75 0 0 0-1.06-1.06L8.75 8.44V1.75a.75.75 0 0 0-1.5 0v6.69L4.78 5.97a.75.75 0 0 0-1.06 1.06l3.75 3.75zM1.75 13.5a.75.75 0 0 0 0 1.5h12.5a.75.75 0 0 0 0-1.5H1.75z"/></svg>`
@@ -193,7 +195,7 @@ var (
 )
 
 func pageShell(active, title, body string) string {
-	head := `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>` + title + `</title><style>` + siteCSS + `</style></head><body><div class="shell"><header class="topbar"><a class="brand" href="/"><span class="brand-mark">` + brandIcon + `</span>KeyVault</a><nav class="nav">` + navHTML(active) + `</nav></header>`
+	head := `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` + faviconLink + `<title>` + title + `</title><style>` + siteCSS + `</style></head><body><div class="shell"><header class="topbar"><a class="brand" href="/"><span class="brand-mark">` + brandIcon + `</span>KeyVault</a><nav class="nav">` + navHTML(active) + `</nav></header>`
 	return head + body + `<footer class="footer">KeyVault · self-hosted key backup</footer></div></body></html>`
 }
 
