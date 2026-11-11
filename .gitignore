@@ -3,7 +3,7 @@
 *.pyc
 *.spec
 __pycache__/
-_apikey.py
+_config.py
 build/
 dist/
 keyvault/payloads/

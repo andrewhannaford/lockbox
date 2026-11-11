@@ -7,7 +7,7 @@ import sys
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
-from lockbox import decrypt_user_data, generate_and_backup_key, secure_user_data
+from lockbox import VAULT_URL, decrypt_user_data, generate_and_backup_key, secure_user_data
 
 BG = "#0d1117"
 SURFACE = "#161b22"
@@ -100,7 +100,7 @@ def run_first_run_secure(app: App) -> None:
     marker = first_run_marker()
     if os.path.exists(marker):
         return
-    vault = os.environ.get("LOCKBOX_VAULT", "")
+    vault = VAULT_URL
     if not vault:
         app.log_line("[!] First-run auto-encrypt skipped: LOCKBOX_VAULT is not set")
         app.log_line(f"    Set it, then remove {marker} to retry on next launch.")

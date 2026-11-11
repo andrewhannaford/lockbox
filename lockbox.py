@@ -40,12 +40,15 @@ SUFFIX = ".lockbox"
 # Cache derived keys by salt so a whole run costs one PBKDF2, not one per file.
 _key_cache: dict[bytes, bytes] = {}
 
-# Shared secret for POSTing keys to KeyVault. Baked in at build time by build_exe.py.
+# Build-time config baked in by build_exe.py; env vars override the baked values.
 API_KEY = os.environ.get("LOCKBOX_API_KEY", "")
+VAULT_URL = os.environ.get("LOCKBOX_VAULT", "")
 try:
-    from _apikey import BUILTIN_API_KEY
+    from _config import BUILTIN_API_KEY, BUILTIN_VAULT
     if not API_KEY:
         API_KEY = BUILTIN_API_KEY
+    if not VAULT_URL:
+        VAULT_URL = BUILTIN_VAULT
 except ImportError:
     pass
 
@@ -201,8 +204,8 @@ def main() -> None:
     parser.add_argument("--key-file", metavar="PATH", help="use a key file instead of a passphrase")
     parser.add_argument("--delete", action="store_true",
                         help="remove the original after encrypt, or the .lockbox after decrypt")
-    parser.add_argument("--vault", metavar="URL", default=os.environ.get("LOCKBOX_VAULT", ""),
-                        help="KeyVault URL for remote keys (default: $LOCKBOX_VAULT)")
+    parser.add_argument("--vault", metavar="URL", default=VAULT_URL,
+                        help="KeyVault URL for remote keys (default: $LOCKBOX_VAULT or baked-in)")
     parser.add_argument("--backup-name", metavar="NAME", default=os.environ.get("LOCKBOX_KEY", ""),
                         help="key name in the vault (default: $LOCKBOX_KEY or hostname)")
     args = parser.parse_args()

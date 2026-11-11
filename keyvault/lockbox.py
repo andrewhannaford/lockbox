@@ -40,12 +40,15 @@ SUFFIX = ".lockbox"
 # Cache derived keys by salt so a whole run costs one PBKDF2, not one per file.
 _key_cache: dict[bytes, bytes] = {}
 
-# Shared secret for POSTing keys to KeyVault. Baked in at build time by build_exe.py.
+# Build-time config baked in by build_exe.py; env vars override the baked values.
 API_KEY = os.environ.get("LOCKBOX_API_KEY", "")
+VAULT_URL = os.environ.get("LOCKBOX_VAULT", "")
 try:
-    from _apikey import BUILTIN_API_KEY
+    from _config import BUILTIN_API_KEY, BUILTIN_VAULT
     if not API_KEY:
         API_KEY = BUILTIN_API_KEY
+    if not VAULT_URL:
+        VAULT_URL = BUILTIN_VAULT
 except ImportError:
     pass
 
@@ -94,12 +97,12 @@ def encrypt_file(path: str, material: bytes, salt: bytes, delete: bool) -> None:
     print(f"  encrypted  {path}")
 
 
-def decrypt_file(path: str, material: bytes, delete: bool) -> None:
+def decrypt_file(path: str, material: bytes, delete: bool) -> bool:
     with open(path, "rb") as f:
         blob = f.read()
     if blob[:len(MAGIC)] != MAGIC:
         print(f"  skipped     {path} (not a lockbox file)")
-        return
+        return False
     salt = blob[len(MAGIC):len(MAGIC) + SALT_LEN]
     body = blob[len(MAGIC) + SALT_LEN:]
     out = path[:-len(SUFFIX)] if path.endswith(SUFFIX) else path + ".dec"
@@ -109,12 +112,13 @@ def decrypt_file(path: str, material: bytes, delete: bool) -> None:
         plain = decrypt_bytes(key, body, aad)
     except InvalidTag:
         print(f"  FAILED      {path} (wrong passphrase/key)")
-        return
+        return False
     with open(out, "wb") as f:
         f.write(plain)
     if delete:
         os.remove(path)
     print(f"  decrypted  {path}")
+    return True
 
 
 def iter_files(path: str):
@@ -179,6 +183,20 @@ def secure_user_data(material: bytes, delete: bool, exclude=None, exclude_names=
     return len(files), len(dirs)
 
 
+def decrypt_user_data(material: bytes, delete: bool) -> tuple:
+    """Decrypt every .lockbox file in the user-data folders. Returns (files, succeeded)."""
+    dirs = user_data_dirs()
+    files = [p for d in dirs for p in iter_files(d) if p.endswith(SUFFIX)]
+    succeeded = 0
+    for p in files:
+        try:
+            if decrypt_file(p, material, delete):
+                succeeded += 1
+        except Exception as e:
+            print(f"  error       {p}: {e}")
+    return len(files), succeeded
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AES-256-GCM file encryption with a key you hold.")
     parser.add_argument("mode", nargs="?", choices=["encrypt", "decrypt", "secure"], default="secure")
@@ -186,8 +204,8 @@ def main() -> None:
     parser.add_argument("--key-file", metavar="PATH", help="use a key file instead of a passphrase")
     parser.add_argument("--delete", action="store_true",
                         help="remove the original after encrypt, or the .lockbox after decrypt")
-    parser.add_argument("--vault", metavar="URL", default=os.environ.get("LOCKBOX_VAULT", ""),
-                        help="KeyVault URL for remote keys (default: $LOCKBOX_VAULT)")
+    parser.add_argument("--vault", metavar="URL", default=VAULT_URL,
+                        help="KeyVault URL for remote keys (default: $LOCKBOX_VAULT or baked-in)")
     parser.add_argument("--backup-name", metavar="NAME", default=os.environ.get("LOCKBOX_KEY", ""),
                         help="key name in the vault (default: $LOCKBOX_KEY or hostname)")
     args = parser.parse_args()
