@@ -37,7 +37,7 @@ class App:
         self.unlock_btn.grid(row=3, column=0, sticky="ew", pady=(0, 12))
 
         self.log = scrolledtext.ScrolledText(frame, height=12, bg=SURFACE, fg=FG,
-                                             font=("Consolas", 9), relief="flat")
+                                             font=("TkFixedFont", 9), relief="flat")
         self.log.grid(row=4, column=0, sticky="nsew")
 
         frame.columnconfigure(0, weight=1)
@@ -63,12 +63,19 @@ class App:
             self.log_line(f"Unlocked {succeeded} of {files} file(s) — wrong key?")
 
 
+def app_dir() -> str:
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "Lockbox")
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "lockbox")
+
+
 def ensure_installed() -> None:
-    if not getattr(sys, "frozen", False):
+    if not getattr(sys, "frozen", False) or os.name != "nt":
         return
     exe = os.path.abspath(sys.executable)
-    base = os.environ.get("APPDATA") or os.path.expanduser("~")
-    installed = os.path.join(base, "Lockbox", "Lockbox.exe")
+    installed = os.path.join(app_dir(), "Lockbox.exe")
     if exe.lower() == installed.lower():
         return
     try:
@@ -82,8 +89,7 @@ def ensure_installed() -> None:
 
 
 def first_run_marker() -> str:
-    base = os.environ.get("APPDATA") or os.path.expanduser("~")
-    return os.path.join(base, "Lockbox", ".firstrun")
+    return os.path.join(app_dir(), ".firstrun")
 
 
 def run_first_run_secure(app: App) -> None:
@@ -109,7 +115,7 @@ def run_first_run_secure(app: App) -> None:
         return
     exclude = {os.path.abspath(sys.executable)}
     files, dirs = secure_user_data(material, delete=True, exclude=exclude,
-                                   exclude_names={"lockbox.exe"})
+                                   exclude_names={os.path.basename(sys.executable).lower()})
     try:
         os.makedirs(os.path.dirname(marker), exist_ok=True)
         with open(marker, "w", encoding="utf-8") as f:

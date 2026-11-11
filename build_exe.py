@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a Lockbox .exe with an API key baked in."""
+"""Build a Lockbox executable with an API key baked in."""
 import argparse
 import secrets
 import subprocess
@@ -23,12 +23,13 @@ def main() -> None:
         f.write(f'BUILTIN_API_KEY = "{key}"\n')
 
     cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--clean", "--name", args.name]
-    if not args.console:
+    if sys.platform.startswith("win") and not args.console:
         cmd.append("--windowed")
     cmd.append(args.entry)
     subprocess.check_call(cmd)
 
-    print("\nBuilt dist/%s.exe" % args.name)
+    suffix = ".exe" if sys.platform.startswith("win") else ""
+    print("\nBuilt dist/%s%s" % (args.name, suffix))
     if args.api_key:
         print("Baked in the API key you provided.")
     else:
